@@ -60,15 +60,7 @@ function DeleteFolder([string]$Path) {
 }
 Set-Alias delete DeleteFolder
 
-### Look for a .sln file in the current directory and open it with VS201X
-function OpenCurrentDirectorySolution {
-    Get-ChildItem $Path -Filter "*.sln" |
-    ForEach-Object {
-        Write-Output "Opening solution: $($_)"
-        Start-Process $_
-    }
-}
-Set-Alias vs OpenCurrentDirectorySolution
+### Sudo
 
 Set-Alias sudo gsudo
 
