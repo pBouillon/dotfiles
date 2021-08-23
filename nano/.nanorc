@@ -1,0 +1,13 @@
+set autoindent
+
+set brackets ""')>]}"
+
+set mouse
+set showcursor
+
+set softwrap
+set tabsize 4
+set tabstospaces
+set trimblanks
+
+include "~/.nano/nanorc/*.nanorc"
