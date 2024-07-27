@@ -1,22 +1,64 @@
+"$schema" = 'https://starship.rs/config-schema.json'
+
+# see - https://www.nerdfonts.com/cheat-sheet
+
+format = """
+$battery\
+$time\
+$hostname\
+$directory\
+$git_branch\
+$git_commit\
+$git_status\
+$git_state\
+$package\
+$nodejs\
+${custom.angular}\
+$cmd_duration\
+$status\
+$line_break\
+$character"""
+
+[character]
+success_symbol = "[\uf105](white)" # 
+error_symbol = "[\uf467](red)" # 
+
 [battery]
-format="[$percentage]($style) remaining "
-disabled = false
-
-[[battery.display]]
-threshold = 15
-style = "bold red"
-
-[[battery.display]]
-threshold = 30
-style = "yellow"
+format = "[$percentage]($style) "
 
 [[battery.display]]
 threshold = 100
-style = "green"
+style = 'green'
 
+[[battery.display]]
+threshold = 50
+style = 'orange'
+
+[[battery.display]]
+threshold = 25
+style = 'red'
+
+[[battery.display]]
+threshold = 10
+style = 'bold red'
+
+[nodejs]
+version_format='${raw}'
+style = 'green'
 
 [time]
-time_format = "%Hh%M"
-format = "at [$time]($style) "
-style = "bright-white"
 disabled = false
+format = "at [$time](white) | "
+time_format = "%H:%M"
+
+[custom.angular]
+description = "Displays the Angular version if present in the package.json"
+command = """
+$json = Get-Content 'package.json' -Raw | ConvertFrom-Json
+$ngVersion = $json.dependencies.'@angular/core'
+$ngVersion.TrimStart('^~=v')
+"""
+detect_files = [ 'package.json' ]
+when = "(Get-Content 'package.json' -Raw | ConvertFrom-Json).dependencies.'@angular/core' -ne $null"
+shell = ['powershell', '-NoProfile', '-Command', '-']
+format = "using [󰚿 $output](red)"
