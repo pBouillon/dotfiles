@@ -52,13 +52,23 @@ format = "at [$time](white) | "
 time_format = "%H:%M"
 
 [custom.angular]
-description = "Displays the Angular version if present in the package.json"
 command = """
-$json = Get-Content 'package.json' -Raw | ConvertFrom-Json
-$ngVersion = $json.dependencies.'@angular/core'
-$ngVersion.TrimStart('^~=v')
+$pnpmDeps = (pnpm list "@angular/core" --json | ConvertFrom-Json)[0]
+$pnpmDeps.dependencies.'@angular/core'.version
 """
-detect_files = [ 'package.json' ]
-when = "(Get-Content 'package.json' -Raw | ConvertFrom-Json).dependencies.'@angular/core' -ne $null"
+when = """
+$pnpmDeps = (pnpm list "@angular/core" --json | ConvertFrom-Json)[0]
+if (-not $pnpmDeps.PSObject.Properties.Name.Contains("dependencies")) {
+    exit 1
+}
+
+$projectDeps = $pnpmDeps.dependencies
+if (-not $projectDeps.PSObject.Properties.Name.Contains("@angular/core")) {
+    exit 1
+}
+
+exit 0
+"""
 shell = ['powershell', '-NoProfile', '-Command', '-']
 format = "using [󰚿 $output](red)"
+ignore_timeout = true
