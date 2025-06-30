@@ -28,22 +28,39 @@ function Set-DevLocation {
 
 Set-Alias dev Set-DevLocation
 
-# Utility - Touch alias
 function Create-File {
     param(
         [String]$FilePath
     )
-    if (Test-Path -Path $FilePath) {
-        Write-Host "File already exists at '$FilePath'." -ForegroundColor DarkYellow
+
+    if ([string]::IsNullOrEmpty($FilePath)) {
+        Write-Host "Error: No path specified." -ForegroundColor Red
+        return
     }
-    else{
-        New-Item $FilePath
+
+    $pathEndsWithSeparator = $FilePath.EndsWith('\') -or $FilePath.EndsWith('/')
+
+    if ($pathEndsWithSeparator) {
+        if (Test-Path -Path $FilePath) {
+            Write-Host "Directory already exists at '$FilePath'." -ForegroundColor DarkYellow
+        }
+        else {
+            Write-Host "Error: Directory does not exist. Use 'mkdir' to create directories." -ForegroundColor Red
+        }
+    }
+    else {
+        if (Test-Path -Path $FilePath) {
+            Write-Host "File already exists at '$FilePath'." -ForegroundColor DarkYellow
+        }
+        else {
+            New-Item -ItemType File -Path $FilePath -Force | Out-Null
+        }
     }
 }
 
 Set-Alias touch Create-File
 
-# Utility - Local PockerBase Versions Launcher
+# Utility - Local PocketBase Versions Launcher
 function Get-PocketBaseVersions {
     $basePath = "$DEV_BASE_DIR/Tools/PocketBase"
     if (Test-Path $basePath) {
