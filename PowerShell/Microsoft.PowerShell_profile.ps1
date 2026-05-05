@@ -116,7 +116,6 @@ function Start-HttpServer {
         [String]$Path, 
         [int]$Port = 8080
     )
-
     if (-not $Path) { $Path = $PWD }
     
     # Initialize PSDrive for the web root
@@ -128,12 +127,10 @@ function Start-HttpServer {
     
     $listener = New-Object System.Net.HttpListener
     $listener.Prefixes.Add($prefix)
-
     try {
         $listener.Start()
         Log -Level 'Success' -Message "Server started! Listening on $prefix"
         Log -Level 'Info' -Message "Root Path: $Path (press Ctrl+C to stop)"
-
         while ($listener.IsListening) {
             # Non-blocking wait to keep the session responsive to Ctrl+C
             $task = $listener.GetContextAsync()
@@ -141,7 +138,6 @@ function Start-HttpServer {
                 if (-not $listener.IsListening) { break }
             }
             if (-not $listener.IsListening) { break }
-
             $context = $task.GetAwaiter().GetResult()
             $request = $context.Request
             $response = $context.Response
@@ -149,7 +145,6 @@ function Start-HttpServer {
             # --- Request Logging Logic ---
             $logMsg = New-Object System.Text.StringBuilder
             [void]$logMsg.Append("$($request.HttpMethod) $($request.Url.LocalPath)")
-
             # Append Query Strings
             if ($request.QueryString.Count -gt 0) {
                 $spacer = "?"
@@ -158,7 +153,6 @@ function Start-HttpServer {
                     $spacer = "&"
                 }
             }
-
             # Read Body if present
             if ($request.HasEntityBody) {
                 $reader = New-Object System.IO.StreamReader($request.InputStream)
@@ -173,31 +167,44 @@ function Start-HttpServer {
             
             $fullPath = "wwwroot:$url"
             $content = $null
-
             if (Test-Path $fullPath -PathType Leaf) {
-                # Handle PS version differences for byte reading
+                # Serve the real file
                 if ($PSVersionTable.PSVersion.Major -ge 6) {
                     $content = Get-Content -Path $fullPath -AsByteStream -Raw
                 } else {
                     $content = Get-Content -Path $fullPath -Encoding Byte -Raw
                 }
-
                 $ext = [System.IO.Path]::GetExtension($url)
                 $response.ContentType = [Microsoft.Win32.Registry]::GetValue("HKEY_CLASSES_ROOT\$ext", "Content Type", "application/octet-stream")
                 $response.StatusCode = 200
                 $response.ContentLength64 = $content.Length
                 $response.OutputStream.Write($content, 0, $content.Length)
             } else {
-                $response.StatusCode = 404
-                $errorBytes = [System.Text.Encoding]::UTF8.GetBytes("404 - Not Found")
-                $response.ContentLength64 = $errorBytes.Length
-                $response.OutputStream.Write($errorBytes, 0, $errorBytes.Length)
+                # SPA fallback: serve index.html for routes with no file extension.
+                # Requests for real assets (.js, .css, etc.) that are missing still get a 404.
+                $ext = [System.IO.Path]::GetExtension($url)
+                $fallbackPath = "wwwroot:\$default"
+                if (-not $ext -and (Test-Path $fallbackPath -PathType Leaf)) {
+                    if ($PSVersionTable.PSVersion.Major -ge 6) {
+                        $content = Get-Content -Path $fallbackPath -AsByteStream -Raw
+                    } else {
+                        $content = Get-Content -Path $fallbackPath -Encoding Byte -Raw
+                    }
+                    $response.ContentType = "text/html"
+                    $response.StatusCode = 200
+                    $response.ContentLength64 = $content.Length
+                    $response.OutputStream.Write($content, 0, $content.Length)
+                } else {
+                    $response.StatusCode = 404
+                    $errorBytes = [System.Text.Encoding]::UTF8.GetBytes("404 - Not Found")
+                    $response.ContentLength64 = $errorBytes.Length
+                    $response.OutputStream.Write($errorBytes, 0, $errorBytes.Length)
+                }
             }
 
             # Log the final result
             $logLevel = if ($response.StatusCode -eq 200) { 'Debug' } else { 'Warning' }
             Log -Level $logLevel -Message "$($response.StatusCode): $($logMsg.ToString())" -ShowTimestamp
-
             $response.Close()
         }
     }
