@@ -92,7 +92,20 @@ function Invoke-GitFlowFeature {
     param([string]$SubCommand, [string]$BranchName)
 
     $develop = Get-GitFlowConfig "branch.develop" "develop"
-    $branch  = "$(Get-GitFlowConfig 'prefix.feature' 'feature/')$BranchName"
+    $prefix  = Get-GitFlowConfig 'prefix.feature' 'feature/'
+
+    if (-not $BranchName -and $SubCommand -in @('finish', 'publish')) {
+        $currentBranch = git rev-parse --abbrev-ref HEAD 2>$null
+        if ($currentBranch -like "$prefix*") {
+            $BranchName = $currentBranch.Substring($prefix.Length)
+            Log -Level Info -Message "Auto-detected feature branch: $currentBranch"
+        } else {
+            Log -Level Error -Message "Not on a feature branch ('$currentBranch'). Checkout the feature branch or pass its name explicitly."
+            return
+        }
+    }
+
+    $branch = "$prefix$BranchName"
 
     switch ($SubCommand) {
         "start" {
@@ -291,9 +304,14 @@ function gitflow {
     switch ($Command) {
         '' { Invoke-GitFlowHelp }
         "feature" {
-            if (-not $SubCommand -or -not $BranchName) {
+            if (-not $SubCommand) {
                 Log -Level Error -Message "Usage: gitflow feature [start|finish|publish] <branch-name>"; return
             }
+
+            if ($SubCommand -eq 'start' -and -not $BranchName) {
+                Log -Level Error -Message "Usage: gitflow feature start <branch-name>"; return
+            }
+
             Invoke-GitFlowFeature -SubCommand $SubCommand -BranchName $BranchName
         }
         "release" {
